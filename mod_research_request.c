@@ -104,7 +104,7 @@ static const char *set_webdav_enable(cmd_parms *cmd, void *mconfig, int flag)
 }
 
 static const command_rec research_request_cmds[] = {
-   AP_INIT_FLAG("WebDav", set_webdav_enable, NULL, ACCESS_CONF | RSRC_CONF, 
+   AP_INIT_FLAG("DAV", set_webdav_enable, NULL, ACCESS_CONF | RSRC_CONF, 
                 "set enable webdav ON / OFF. (default off)"),
    {NULL},
 };
