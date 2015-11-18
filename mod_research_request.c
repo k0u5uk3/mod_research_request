@@ -53,16 +53,29 @@
 #include "apr_optional.h"
 */
 
+#define ON 1
+#define OFF 0
+
+typedef struct {
+   u_int webdav_enable;
+} config_t;
+
+module AP_MODULE_DECLARE_DATA research_request_module;
+
+static void *create_config(apr_pool_t *p, server_rec *s)
+{
+  config_t *conf = apr_palloc(p, sizeof(config_t)); 
+  conf->webdav_enable = OFF;
+  return conf;
+}
 
 /* The sample content handler */
 static int research_request_handler(request_rec *r)
 {
     r->content_type = "text/plain";      
-
     ap_rputs("************************\n",r);
     ap_rputs("* Mod Research Reqeust *\n",r);
     ap_rputs("************************\n",r);
-
     ap_rprintf(r, "protocol: %s\n", r->protocol);
     ap_rprintf(r, "method: %s\n", r->method);
     ap_rprintf(r, "method_number: %d\n", r->method_number);
@@ -74,12 +87,29 @@ static int research_request_handler(request_rec *r)
                                      apr_table_get(r->headers_in, "User-Agent") : "");
     ap_rprintf(r, "referer: %s\n",   apr_table_get(r->headers_in, "Referer") ? 
                                      apr_table_get(r->headers_in, "Referer") : "");
-    ap_rprintf(r, "server_admin: %s\n", r->server->server_admin);
 
+    config_t *conf = ap_get_module_config(r->server->module_config, &research_request_module);
+    ap_rprintf(r, "webdav: %d\n", conf->webdav_enable);
     return OK;
 }
 
-static void research_request_register_hooks(apr_pool_t *p)
+static const char *set_webdav_enable(cmd_parms *cmd, void *mconfig, int flag)
+{
+   config_t *conf = ap_get_module_config(cmd->server->module_config, &research_request_module);
+   const char *err = ap_check_cmd_context(cmd, NOT_IN_FILES | NOT_IN_LIMIT);
+   if(err != NULL)
+      return err;
+   conf->webdav_enable = flag;
+   return NULL;
+}
+
+static const command_rec research_request_cmds[] = {
+   AP_INIT_FLAG("WebDav", set_webdav_enable, NULL, ACCESS_CONF | RSRC_CONF, 
+                "set enable webdav ON / OFF. (default off)"),
+   {NULL},
+};
+
+static void register_hooks(apr_pool_t *p)
 {
     ap_hook_handler(research_request_handler, NULL, NULL, APR_HOOK_MIDDLE);
 }
@@ -87,11 +117,12 @@ static void research_request_register_hooks(apr_pool_t *p)
 /* Dispatch list for API hooks */
 module AP_MODULE_DECLARE_DATA research_request_module = {
     STANDARD20_MODULE_STUFF, 
-    NULL,                  /* create per-dir    config structures */
-    NULL,                  /* merge  per-dir    config structures */
-    NULL,                  /* create per-server config structures */
-    NULL,                  /* merge  per-server config structures */
-    NULL,                  /* table of config file commands       */
-    research_request_register_hooks  /* register hooks                      */
+    NULL,                        /* create per-dir    config structures */
+    NULL,                        /* merge  per-dir    config structures */
+    create_config,               /* create per-server config structures */
+    NULL,                        /* merge  per-server config structures */
+    research_request_cmds,       /* table of config file commands       */
+    register_hooks               /* register hooks                      */
 };
+
 
